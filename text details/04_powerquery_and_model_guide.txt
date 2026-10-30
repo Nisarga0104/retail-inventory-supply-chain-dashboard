@@ -1,0 +1,49 @@
+Power Query starter guidance:
+1. Get Data > Text/CSV and import products.csv, stores.csv, suppliers.csv, orders.csv,
+   order_items.csv, inventory_snapshots.csv, purchase_orders.csv, shipments.csv.
+2. Set data types explicitly:
+   - *_id columns: Whole Number
+   - dates: Date
+   - prices/costs/discounts: Decimal Number
+   - quantities/units: Whole Number
+3. For each query: Transform > Format > Trim/Clean relevant text fields.
+4. Check nulls and duplicates. Keep inventory_snapshots unique by snapshot_date + store_id + product_id.
+5. Merge products with suppliers only if supplier attributes are needed in a product-level table; otherwise keep dimensions separate.
+6. Create a date table in DAX and relate it to orders[order_date].
+7. Disable load for intermediate staging queries if you create any.
+
+Optional M example for a CSV source (edit the path to your own folder):
+let
+    Source = Csv.Document(
+        File.Contents("C:\YOUR_FOLDER\products.csv"),
+        [Delimiter=",", Encoding=65001, QuoteStyle=QuoteStyle.Csv]
+    ),
+    PromotedHeaders = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+    TypedColumns = Table.TransformColumnTypes(PromotedHeaders,{
+        {"product_id", Int64.Type},
+        {"product_name", type text},
+        {"category", type text},
+        {"supplier_id", Int64.Type},
+        {"unit_cost", Currency.Type},
+        {"unit_price", Currency.Type},
+        {"reorder_level", Int64.Type}
+    }),
+    CleanText = Table.TransformColumns(TypedColumns,{
+        {"product_name", Text.Trim, type text},
+        {"category", Text.Trim, type text}
+    })
+in
+    CleanText
+
+Recommended relationships:
+customers[customer_id] 1 -> * orders[customer_id]
+stores[store_id] 1 -> * orders[store_id]
+orders[order_id] 1 -> * order_items[order_id]
+products[product_id] 1 -> * order_items[product_id]
+products[product_id] 1 -> * inventory_snapshots[product_id]
+stores[store_id] 1 -> * inventory_snapshots[store_id]
+products[product_id] 1 -> * purchase_orders[product_id]
+suppliers[supplier_id] 1 -> * purchase_orders[supplier_id]
+stores[store_id] 1 -> * purchase_orders[store_id]
+orders[order_id] 1 -> 0/1 payments[order_id]
+orders[order_id] 1 -> 0/1 shipments[order_id]

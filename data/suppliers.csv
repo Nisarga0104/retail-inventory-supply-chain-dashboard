@@ -1,0 +1,13 @@
+supplier_id,supplier_name,lead_time_days,supplier_region
+1,Supplier 01,3,South
+2,Supplier 02,14,East
+3,Supplier 03,12,South
+4,Supplier 04,9,East
+5,Supplier 05,8,South
+6,Supplier 06,15,West
+7,Supplier 07,3,East
+8,Supplier 08,13,North
+9,Supplier 09,5,South
+10,Supplier 10,3,North
+11,Supplier 11,10,West
+12,Supplier 12,17,East

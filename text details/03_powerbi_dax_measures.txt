@@ -1,0 +1,74 @@
+-- Power BI DAX measures (table/column names match CSV import names)
+Total Sales = SUMX(orders, 0) -- Replace with the measure below; orders are header-level.
+Net Sales =
+SUMX(
+    FILTER(order_items, RELATED(orders[order_status]) = "Delivered"),
+    order_items[quantity] * order_items[unit_price] * (1 - order_items[discount_pct])
+)
+
+Units Sold =
+CALCULATE(SUM(order_items[quantity]), orders[order_status] = "Delivered")
+
+Order Count = DISTINCTCOUNT(orders[order_id])
+
+Delivered Orders =
+CALCULATE(DISTINCTCOUNT(orders[order_id]), orders[order_status] = "Delivered")
+
+Cancelled Orders =
+CALCULATE(DISTINCTCOUNT(orders[order_id]), orders[order_status] = "Cancelled")
+
+Cancellation Rate =
+DIVIDE([Cancelled Orders], [Order Count], 0)
+
+Inventory Value =
+SUMX(
+    inventory_snapshots,
+    inventory_snapshots[closing_units] * RELATED(products[unit_cost])
+)
+
+Low Stock Product-Store Pairs =
+SUMX(
+    inventory_snapshots,
+    IF(
+        inventory_snapshots[closing_units] < RELATED(products[reorder_level]),
+        1,
+        0
+    )
+)
+
+Inventory Snapshot Rows = COUNTROWS(inventory_snapshots)
+
+Low Stock Rate =
+DIVIDE([Low Stock Product-Store Pairs], [Inventory Snapshot Rows], 0)
+
+Average Actual Lead Days = AVERAGE(purchase_orders[actual_lead_days])
+
+Supplier Delay Rate =
+DIVIDE(
+    CALCULATE(COUNTROWS(purchase_orders), purchase_orders[po_status] = "Delayed"),
+    COUNTROWS(purchase_orders),
+    0
+)
+
+Estimated Gross Profit =
+SUMX(
+    FILTER(order_items, RELATED(orders[order_status]) = "Delivered"),
+    order_items[quantity] *
+    (order_items[unit_price] * (1 - order_items[discount_pct]) - RELATED(products[unit_cost]))
+)
+
+Gross Margin % = DIVIDE([Estimated Gross Profit], [Net Sales], 0)
+
+-- For time intelligence, create a Calendar table, mark it as a date table,
+-- and relate Calendar[Date] to orders[order_date].
+Calendar =
+CALENDAR(DATE(2025,1,1), DATE(2025,12,31))
+
+Sales Previous Month =
+CALCULATE([Net Sales], DATEADD(Calendar[Date], -1, MONTH))
+
+Sales MoM % =
+DIVIDE([Net Sales] - [Sales Previous Month], [Sales Previous Month], 0)
+
+Product Revenue Rank =
+RANKX(ALL(products[product_name]), [Net Sales], , DESC, DENSE)
